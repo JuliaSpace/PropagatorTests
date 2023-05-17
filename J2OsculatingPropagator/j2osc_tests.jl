@@ -33,22 +33,20 @@ function create_j2_osc_validation_tests()
     # Inputs
     # ======================================================================================
 
+    # This state vector is obtained using the J2 osculating propagator with `t = 0s` and the
+    # following mean elements:
+    #
+    #   - Epoch           : 2023-01-01T00:00:00
+    #   - Semi-major axis : 7190.982    km
+    #   - Eccentricity    :    0.001111
+    #   - Inclination     :   98.405    °
+    #   - RAAN            :   90.0      °
+    #   - Arg. of Perigee :  200.0      °
+    #   - True Anomaly    :   45.0      °
+
     jd₀ = date_to_jd(2023, 1, 1, 0, 0, 0)
-    orb = KeplerianElements(
-        jd₀,
-        7190.982e3,
-           0.001111,
-          98.405 |> deg2rad,
-          90     |> deg2rad,
-         200     |> deg2rad,
-          45     |> deg2rad
-    )
-    orbp = init_orbit_propagator(Val(:J2osc), orb)
-
-    # Initial osculating value
-    # ======================================================================================
-
-    r₀, v₀ = propagate!(orbp, 0)
+    r₀  = @SVector [-952882.6807035431, -3.03843825141778e6, -6.444903144699051e6]
+    v₀  = @SVector [-460.11262511481317, 6745.426195633091, -3115.9662885215403]
 
     # Build the ODE problem
     # ======================================================================================
