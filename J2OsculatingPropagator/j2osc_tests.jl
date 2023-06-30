@@ -1,34 +1,35 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
 #                                    Author : Ronan Arraes Jardim Chagas <ronisbr@gmail.com>
-#                                      Date : 2023-04-25T13:00:00 UTC-3
+#                                      Date : 2023-06-30T13:30:00 UTC-3
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
 # Description
 # ==========================================================================================
 #
-#   Create a test set for the J2 osculating orbit propagator using a numerical algorith.
+#   Create a test set for the J2 osculating orbit propagator using a numerical algorithm.
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+using Dates
 using DifferentialEquations
 using PrettyTables
-using SatelliteToolbox
+using SatelliteToolboxGravityModels
+using SatelliteToolboxTransformations
 using StaticArrays
 
 """
-    create_j2_osc_validation_tests()
+    create_j2osc_validation_tests()
 
 Create the validation tests for the J2 osculating orbit propagator.
 """
-function create_j2_osc_validation_tests()
+function create_j2osc_validation_tests()
     # Load gravity model
     # ======================================================================================
 
     # We are using the constants in the EGM-2008 model
-    icgem_egm08 = parse_icgem("../EGM2008.gfc")
-    egm08 = create_gravity_model_coefs(icgem_egm08)
+    egm2008 = GravityModels.load(IcgemFile, fetch_icgem_file(:EGM2008))
 
     # Inputs
     # ======================================================================================
@@ -44,14 +45,14 @@ function create_j2_osc_validation_tests()
     #   - Arg. of Perigee :  200.0      °
     #   - True Anomaly    :   45.0      °
 
-    jd₀ = date_to_jd(2023, 1, 1, 0, 0, 0)
+    jd₀ = DateTime("2023-01-01") |> datetime2julian
     r₀  = @SVector [-952882.6807035431, -3.03843825141778e6, -6.444903144699051e6]
     v₀  = @SVector [-460.11262511481317, 6745.426195633091, -3115.9662885215403]
 
     # Build the ODE problem
     # ======================================================================================
 
-    p = (; jd₀, egm08)
+    p = (; jd₀, egm2008)
     u₀ = vcat(r₀, v₀)
     tspan = (0.0, 6000.0)
     prob = ODEProblem(_dynamics, u₀, tspan, p)
@@ -103,8 +104,8 @@ end
 
 function _dynamics(u, p, t)
     # Unpack the parameters.
-    jd₀   = p.jd₀
-    egm08 = p.egm08
+    jd₀     = p.jd₀
+    egm2008 = p.egm2008
 
     # Unpack the state.
     r_tod = SVector(u[1], u[2], u[3])
@@ -121,7 +122,12 @@ function _dynamics(u, p, t)
     # Since we are testing the J2 osculating propagator, we should use only the 2nd degree
     # and order 0 when computing the gravity. In this case, only the term related to the
     # constant J2 will be used.
-    g_pef = compute_g(egm08, r_pef, 2, 0)
+    g_pef = GravityModels.gravitational_acceleration(
+        egm2008,
+        r_pef;
+        max_degree = 2,
+        max_order  = 0
+    )
     g_tod = D_pef_tod' * g_pef
 
     # Compute the time derivative of the state vector.
@@ -134,4 +140,4 @@ end
 #                                           Run
 ############################################################################################
 
-create_j2_osc_validation_tests()
+create_j2osc_validation_tests()
